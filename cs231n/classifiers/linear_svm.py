@@ -65,7 +65,7 @@ def svm_loss_naive(W, X, y, reg):
    
   # Add regularization to the loss.
   loss += 0.5 * reg * np.sum(W * W)
-  #dW += reg * W 
+  dW += reg * W 
 
   #############################################################################
   # TODO:                                                                     #
@@ -108,33 +108,27 @@ def svm_loss_vectorized(W, X, y, reg):
   y = y[:,np.newaxis]  # (500,1) treat y like a col vector
 
   # Create a col vector of the correct score values
-  rows = np.arange(np.size(y, axis=0))
+  rows = np.arange(num_train)
   rows = rows[:, np.newaxis]
   
   # Index the scores to pull out the correct values
   correctScores = scores[rows, y]
-  print 'correctScores.shape {} '.format(correctScores.shape)
-
-  print scores[:2,]
-  print y[:2]
-  print correctScores[:2,]
+#  print 'correctScores.shape {} '.format(correctScores.shape)
+#
+#  print scores[:2,]
+#  print y[:2]
+#  print correctScores[:2,]
 
   scoresDiff = scores - correctScores
-  print scoresDiff[:2,]
+  #print scoresDiff[:2,]
   
   margins = np.maximum(0, scoresDiff + 1)
   margins[rows, y] = 0
-  print margins[:2,]
+  #print margins[:2,]
   
+  # Final loss calculation - add up all margins and normalise by # training
   loss = np.sum(margins) 
   loss /= num_train
-  
-  #margins = np.maximum(0, scores - scores[y] + 1)
-  #margins[y] = 0
-  #loss_i = np.sum(margins)
-  #loss += loss_i
-  
-  
   
   #############################################################################
   #                             END OF YOUR CODE                              #
