@@ -110,7 +110,12 @@ class LinearClassifier(object):
     # TODO:                                                                   #
     # Implement this method. Store the predicted labels in y_pred.            #
     ###########################################################################
-    pass
+
+    # y = X.W to get raw prediction scores. Then take the maximum prediction
+    # and use that column to get the class        
+    y_pred = X.dot(self.W)
+    y_pred = y_pred.argmax(axis=-1)
+    
     ###########################################################################
     #                           END OF YOUR CODE                              #
     ###########################################################################
@@ -131,7 +136,7 @@ class LinearClassifier(object):
     - loss as a single float
     - gradient with respect to self.W; an array of the same shape as W
     """
-    pass
+    
 
 
 class LinearSVM(LinearClassifier):
