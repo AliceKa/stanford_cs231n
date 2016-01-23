@@ -83,12 +83,7 @@ class TwoLayerNet(object):
 
     # Output layer
     scores2 = np.dot(relu1, W2) + b2
-    scaled2 = scores2 - np.max(scores2)
-    exp2 = np.exp(scaled2)
-    rowSums = np.sum(exp2, axis=-1)
-    norm2 = exp2 / rowSums[:, np.newaxis]
-    softmax2 = -1 * np.log(norm2)
-    #print 'Output of layer 2 is {}'.format(softmax2)
+    #print 'Output of layer 2 is {}'.format(scores2)
 
     scores = scores2
     #############################################################################
@@ -99,8 +94,6 @@ class TwoLayerNet(object):
     if y is None:
       return scores
 
-    # Compute the loss
-    loss = None
     #############################################################################
     # TODO: Finish the forward pass, and compute the loss. This should include  #
     # both the data loss and L2 regularization for W1 and W2. Store the result  #
@@ -108,19 +101,58 @@ class TwoLayerNet(object):
     # classifier loss. So that your results match ours, multiply the            #
     # regularization loss by 0.5                                                #
     #############################################################################
-    pass
+
+    # Compute the softmax function operating on the scores2 output
+    scaled2 = scores2 - np.max(scores2)
+    exp2 = np.exp(scaled2)
+    rowSums = np.sum(exp2, axis=-1)
+    norm2 = exp2 / rowSums[:, np.newaxis]
+
+    # Select the correct classes from the prediction matrix
+    rows = np.arange(N)
+    cols = y[:, np.newaxis]
+    correctScores = norm2[rows[:, np.newaxis], cols]
+
+    # Take the log and normalise over training set
+    correctLosses = -1 * np.log(correctScores)
+    dataLoss = np.sum(correctLosses) / N
+    
+    # Add regularization loss
+    regLoss = 0.5 * reg * (np.sum(W1 * W1) + np.sum(W2 * W2))
+    
+    # Compute final loss value
+    loss = dataLoss + regLoss
+
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
-
-    # Backward pass: compute gradients
     grads = {}
     #############################################################################
     # TODO: Compute the backward pass, computing the derivatives of the weights #
     # and biases. Store the results in the grads dictionary. For example,       #
     # grads['W1'] should store the gradient on W1, and be a matrix of same size #
     #############################################################################
-    pass
+
+    # Backward pass: compute gradients
+
+    # compute the gradient on scores
+    dscores = norm2
+    dscores[range(N),y] -= 1
+    dscores /= N
+
+    grads['W2'] = relu1.T.dot(dscores)
+    grads['b2'] = np.sum(dscores, axis=0)
+    
+    drelu1 = dscores.dot(W2.T)
+    drelu1[scores1 <= 0] = 0
+
+    grads['W1'] = X.T.dot(drelu1)
+    grads['b1'] = np.sum(drelu1, axis=0)
+    
+    # Regularization 
+    grads['W2'] += reg * W2
+    grads['W1'] += reg * W1
+
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
