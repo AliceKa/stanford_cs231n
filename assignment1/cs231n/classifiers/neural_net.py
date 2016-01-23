@@ -67,14 +67,30 @@ class TwoLayerNet(object):
     W2, b2 = self.params['W2'], self.params['b2']
     N, D = X.shape
 
-    # Compute the forward pass
+    
     scores = None
     #############################################################################
     # TODO: Perform the forward pass, computing the class scores for the input. #
     # Store the result in the scores variable, which should be an array of      #
     # shape (N, C).                                                             #
     #############################################################################
-    pass
+
+    # Layer 1 (Hidden layer)
+    scores1 = np.dot(X, W1) + b1
+    relu1 = scores1
+    relu1[relu1 < 0] = 0
+    #print 'Output of layer 1 is {}'.format(relu1)
+
+    # Output layer
+    scores2 = np.dot(relu1, W2) + b2
+    scaled2 = scores2 - np.max(scores2)
+    exp2 = np.exp(scaled2)
+    rowSums = np.sum(exp2, axis=-1)
+    norm2 = exp2 / rowSums[:, np.newaxis]
+    softmax2 = -1 * np.log(norm2)
+    #print 'Output of layer 2 is {}'.format(softmax2)
+
+    scores = scores2
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
