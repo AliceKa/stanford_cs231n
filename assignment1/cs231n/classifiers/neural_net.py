@@ -76,23 +76,23 @@ class TwoLayerNet(object):
     #############################################################################
 
     # Layer 1 (Hidden layer)
-    scores1 = np.dot(X, W1) + b1
-    relu1 = scores1
-    relu1[relu1 < 0] = 0
+    z1 = np.dot(X, W1) + b1
+    a1 = z1
+    a1[a1 < 0] = 0
     #print 'Output of layer 1 is {}'.format(relu1)
 
     # Output layer
-    scores2 = np.dot(relu1, W2) + b2
+    z2 = np.dot(a1, W2) + b2
     #print 'Output of layer 2 is {}'.format(scores2)
 
-    scores = scores2
+    scores = z2
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
     
     # If the targets are not given then jump out, we're done
     if y is None:
-      return scores
+      return z2
 
     #############################################################################
     # TODO: Finish the forward pass, and compute the loss. This should include  #
@@ -103,19 +103,19 @@ class TwoLayerNet(object):
     #############################################################################
 
     # Compute the softmax function operating on the scores2 output
-    scaled2 = scores2 - np.max(scores2)
-    exp2 = np.exp(scaled2)
-    rowSums = np.sum(exp2, axis=-1)
-    norm2 = exp2 / rowSums[:, np.newaxis]
+    z2_scale = z2 - np.max(z2)
+    z2_exp = np.exp(z2_scale)
+    z2_row_sums = np.sum(z2_exp, axis=-1)
+    a2 = z2_exp / z2_row_sums[:, np.newaxis]
 
     # Select the correct classes from the prediction matrix
     rows = np.arange(N)
     cols = y[:, np.newaxis]
-    correctScores = norm2[rows[:, np.newaxis], cols]
+    a2_correct = a2[rows[:, np.newaxis], cols]
 
     # Take the log and normalise over training set
-    correctLosses = -1 * np.log(correctScores)
-    dataLoss = np.sum(correctLosses) / N
+    a2_loss = -1 * np.log(a2_correct)
+    dataLoss = np.sum(a2_loss) / N
     
     # Add regularization loss
     regLoss = 0.5 * reg * (np.sum(W1 * W1) + np.sum(W2 * W2))
@@ -136,23 +136,28 @@ class TwoLayerNet(object):
     # Backward pass: compute gradients
 
     # compute the gradient on scores
-    dscores = norm2
-    dscores[range(N),y] -= 1
-    dscores /= N
+    dz2 = a2
+    dz2[range(N),y] -= 1
+    dz2 /= N
 
-    grads['W2'] = relu1.T.dot(dscores)
-    grads['b2'] = np.sum(dscores, axis=0)
+    grads['W2'] = a1.T.dot(dz2)
+    grads['b2'] = np.sum(dz2, axis=0)
     
-    drelu1 = dscores.dot(W2.T)
-    drelu1[scores1 <= 0] = 0
+    da1 = dz2.dot(W2.T)
+    dz1 = da1
+    dz1[z1 <= 0] = 0
 
-    grads['W1'] = X.T.dot(drelu1)
-    grads['b1'] = np.sum(drelu1, axis=0)
+    grads['W1'] = X.T.dot(dz1)
+    grads['b1'] = np.sum(dz1, axis=0)
     
     # Regularization 
     grads['W2'] += reg * W2
     grads['W1'] += reg * W1
 
+    #print 'dz2 = {}'.format(dz2)
+    #print 'da1 = {}'.format(da1)
+    #print 'dz1 = {}'.format(dz1)
+    #print 'grads = {}'.format(grads)
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
