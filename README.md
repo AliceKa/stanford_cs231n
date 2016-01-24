@@ -1,4 +1,4 @@
-# Stanford CS231n: Convolutional Neural Networks for Visual Recognition
+# Stanford CS231n: Convolutional Neural Networks for Visual Recognition (Winter 2016)
  
 ## Introduction
 This repo contains the assignments and links from the Winter 2016 offering of Stanford's CS231n course. I really appreciate Stanford's decision to open up this course for the public to follow along. This field is so new there is no reference textbook, only recent papers from 2012 and onwards.
