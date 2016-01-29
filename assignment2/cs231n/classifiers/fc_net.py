@@ -83,19 +83,20 @@ class TwoLayerNet(object):
     ############################################################################
 
     # Hidden layer affine relu from inputs    
-    x_hidden = X
-    w_hidden = self.params['W1']
-    b_hidden = self.params['b1']
+    x = X
+    W1 = self.params['W1']
+    b1 = self.params['b1']
+    z1 = x.dot(W1) + b1
     
-    hidden_out, hidden_cache = affine_relu_forward(x_hidden, w_hidden, b_hidden)
+    a1, z1 = relu_forward(z1)
 
     # Output layer affine softmax
-    w_output = self.params['W2']
-    b_output = self.params['b2']
+    W2 = self.params['W2']
+    b2 = self.params['b2']
     
-    x_output = hidden_out.dot(w_output) + b_output
+    z2 = a1.dot(W2) + b2
     
-    scores = x_output
+    scores = z2
 
     ############################################################################
     #                             END OF YOUR CODE                             #
@@ -118,33 +119,26 @@ class TwoLayerNet(object):
     ############################################################################
     
     # Compute the loss and gradients in softmax
-    data_loss, dx = softmax_loss(scores, y)
+    data_loss, dz2 = softmax_loss(scores, y)
     
-    # Backprop through the hidden + Relu layer
-    affine_relu_backward(dout, cache):
-
+    # Now backprop and update hidden layer W2 and b2
+    da1, dW2, db2 = affine_backward(dz2, (a1, W2, b2))
+    self.params['W2'] -= dW2
+    self.params['b2'] -= db2
     
-    grads['W2'] = 
-    grads['b2'] = 
+    # Backprop through the Relu layer
+    dz1 = relu_backward(da1, a1)
     
-    da1 = dz2.dot(W2.T)
-    dz1 = da1
-    dz1[z1 <= 0] = 0
-
-    grads['W1'] = 
-    grads['b1'] = 
+    # Backprop input layer and update W1 and b1
+    dx, dW1, db1 = affine_backward(dz2, (a1, W2, b2))
+    self.params['W1'] -= dW1
+    self.params['b1'] -= db1
     
-    # Regularization 
-    grads['W2'] += reg * W2
-    grads['W1'] += reg * W1
-
-
-    grads
-
-    # Calculate the regularization loss
-    W1 = self.params['W1']
-    W2 = self.params['W2']
+    # Regularization loss for the weights (before calculating reg loss?)
+    self.params['W2'] += reg * W2
+    self.params['W1'] += reg * W1
     
+    # Combine data and regularization losses
     reg_loss = 0.5 * self.reg * (np.sum(W1 * W1) + np.sum(W2 * W2))
     loss = reg_loss + data_loss
         
