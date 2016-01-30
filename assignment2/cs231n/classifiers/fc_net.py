@@ -82,20 +82,42 @@ class TwoLayerNet(object):
     # class scores for X and storing them in the scores variable.              #
     ############################################################################
 
-    # Hidden layer affine relu from inputs    
-    x = X
+# This is the old way of doing it piece by piece
+#    # Hidden layer affine relu from inputs    
+#    # Reshape x into N rows
+#    N = X.shape[0]
+#    X_reshape = X.reshape(N, -1)
+#    
+#    W1 = self.params['W1']
+#    b1 = self.params['b1']
+#    z1 = X_reshape.dot(W1) + b1
+#    
+#    a1, z1 = relu_forward(z1)
+#
+#    # Output layer affine softmax
+#    W2 = self.params['W2']
+#    b2 = self.params['b2']
+#    
+#    z2 = a1.dot(W2) + b2
+#    
+#    scores = z2
+
     W1 = self.params['W1']
     b1 = self.params['b1']
-    z1 = x.dot(W1) + b1
-    
-    a1, z1 = relu_forward(z1)
-
-    # Output layer affine softmax
     W2 = self.params['W2']
     b2 = self.params['b2']
-    
-    z2 = a1.dot(W2) + b2
-    
+
+
+# Neater combined implementation
+    # First affine transformation
+    (z1, affine1_cache) = affine_forward(X, W1, b1)
+
+    # RELU forward
+    (a1, relu1_cache) = relu_forward(z1)
+
+    # Second affine transformation
+    (z2, affine2_cache) = affine_forward(a1, W2, b2)
+
     scores = z2
 
     ############################################################################
@@ -117,33 +139,37 @@ class TwoLayerNet(object):
     # automated tests, make sure that your L2 regularization includes a factor #
     # of 0.5 to simplify the expression for the gradient.                      #
     ############################################################################
+
+# Neater combined implementation
     
     # Compute the loss and gradients in softmax
     data_loss, dz2 = softmax_loss(scores, y)
-    
+        
     # Now backprop and update hidden layer W2 and b2
     da1, dW2, db2 = affine_backward(dz2, (a1, W2, b2))
-    self.params['W2'] -= dW2
-    self.params['b2'] -= db2
     
     # Backprop through the Relu layer
     dz1 = relu_backward(da1, a1)
     
     # Backprop input layer and update W1 and b1
-    dx, dW1, db1 = affine_backward(dz2, (a1, W2, b2))
-    self.params['W1'] -= dW1
-    self.params['b1'] -= db1
-    
-    # Regularization loss for the weights (before calculating reg loss?)
-    self.params['W2'] += reg * W2
-    self.params['W1'] += reg * W1
-    
-    # Combine data and regularization losses
+    (dx, dW1, db1) = affine_backward(dz1, (X, W1, b1))
+
+    # Combine data and reg losses ready to return    
     reg_loss = 0.5 * self.reg * (np.sum(W1 * W1) + np.sum(W2 * W2))
     loss = reg_loss + data_loss
-        
-    print 'data loss = {}'.format(data_loss)
-    print 'grads = {}'.format(grads)        
+
+    # Regularize the weights
+    dW2 += self.reg * W2
+    dW1 += self.reg * W1
+    
+    # Pack the grads values and return
+    grads['W1'] = dW1
+    grads['b1'] = db1
+    grads['W2'] = dW2
+    grads['b2'] = db2    
+                
+    #print 'data loss = {}'.format(data_loss)
+    #print 'grads = {}'.format(grads)        
         
     ############################################################################
     #                             END OF YOUR CODE                             #
