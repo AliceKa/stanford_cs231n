@@ -28,7 +28,7 @@ def affine_forward(x, w, b):
   N = x.shape[0]
   x_reshape = x.reshape(N, -1)
   # Manipulate b for broadcasting across all examples
-  b = b[np.newaxis, :]
+  #b = b[np.newaxis, :]
 
   # Do the calculations  
   out = x_reshape.dot(w) + b

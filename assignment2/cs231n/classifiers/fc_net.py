@@ -82,6 +82,12 @@ class TwoLayerNet(object):
     # class scores for X and storing them in the scores variable.              #
     ############################################################################
 
+    # Unpack the dictionary of weights and bias
+    W1 = self.params['W1']
+    b1 = self.params['b1']
+    W2 = self.params['W2']
+    b2 = self.params['b2']
+
 # This is the old way of doing it piece by piece
 #    # Hidden layer affine relu from inputs    
 #    # Reshape x into N rows
@@ -102,22 +108,19 @@ class TwoLayerNet(object):
 #    
 #    scores = z2
 
-    W1 = self.params['W1']
-    b1 = self.params['b1']
-    W2 = self.params['W2']
-    b2 = self.params['b2']
-
-
 # Neater combined implementation
-    # First affine transformation
-    (z1, affine1_cache) = affine_forward(X, W1, b1)
+#    # First affine transformation
+#    (z1, affine1_cache) = affine_forward(X, W1, b1)
+#
+#    # RELU forward
+#    (a1, relu1_cache) = relu_forward(z1)
+#
+#    # Second affine transformation
+#    (z2, affine2_cache) = affine_forward(a1, W2, b2)
 
-    # RELU forward
-    (a1, relu1_cache) = relu_forward(z1)
-
-    # Second affine transformation
-    (z2, affine2_cache) = affine_forward(a1, W2, b2)
-
+# Ultra fancy layer_utils functions combining affine and relu
+    (a1, cache1) = affine_relu_forward(X, W1, b1)
+    (z2, cache2) = affine_forward(a1, W2, b2)
     scores = z2
 
     ############################################################################
@@ -139,20 +142,23 @@ class TwoLayerNet(object):
     # automated tests, make sure that your L2 regularization includes a factor #
     # of 0.5 to simplify the expression for the gradient.                      #
     ############################################################################
-
-# Neater combined implementation
     
-    # Compute the loss and gradients in softmax
+    # Compute the loss and output gradients in softmax
     data_loss, dz2 = softmax_loss(scores, y)
-        
-    # Now backprop and update hidden layer W2 and b2
-    da1, dW2, db2 = affine_backward(dz2, (a1, W2, b2))
-    
-    # Backprop through the Relu layer
-    dz1 = relu_backward(da1, a1)
-    
-    # Backprop input layer and update W1 and b1
-    (dx, dW1, db1) = affine_backward(dz1, (X, W1, b1))
+
+# Old way of backpropping gradients (layers.py)                
+    ## Now backprop and update hidden layer W2 and b2
+    #da1, dW2, db2 = affine_backward(dz2, (a1, W2, b2))
+    #
+    ## Backprop through the Relu layer
+    #dz1 = relu_backward(da1, a1)
+    #
+    ## Backprop input layer and update W1 and b1
+    #(dx, dW1, db1) = affine_backward(dz1, (X, W1, b1))
+
+# New fancy layer_utils.py combined functions
+    (da1, dW2, db2) = affine_backward(dz2, cache2)
+    (dx, dW1, db1) = affine_relu_backward(da1, cache1)
 
     # Combine data and reg losses ready to return    
     reg_loss = 0.5 * self.reg * (np.sum(W1 * W1) + np.sum(W2 * W2))
@@ -236,7 +242,44 @@ class FullyConnectedNet(object):
     # beta2, etc. Scale parameters should be initialized to one and shift      #
     # parameters should be initialized to zero.                                #
     ############################################################################
-    pass
+    
+    # Weight dimensions have to be cols of previous stage x rows of next stage
+
+    assert hidden_dims > 0, "Error - expected hidden dimensions, got 0"
+    
+    dimensions = []
+    hidden_idx = 0
+    
+    while (hidden_idx < len(hidden_dims)):
+        # First dimension has to be from input stage to first hidden dim
+        if (hidden_idx == 0):
+            dimensions.append((input_dim, hidden_dims[0]))
+        # Bridge from one hidden dim to another hiden dim size
+        else:
+            dimensions.append((hidden_dims[hidden_idx-1], hidden_dims[hidden_idx]))
+
+        hidden_idx += 1
+
+    # Last dimension has to be last hidden dim to output classes
+    dimensions.append((hidden_dims[len(hidden_dims)-1], num_classes))
+    #print 'Dimensions of network are: {}'.format(dimensions)
+    
+    # Populate the weights and bias values for the stages
+    for idx, dim in enumerate(dimensions):
+        #print idx, dim
+        stage_idx = idx + 1
+        weights = 'W' + str(stage_idx)
+        bias = 'b' + str(stage_idx)
+        #gamma = 'gamma' + str(stage_idx)
+        #beta = 'beta' + str(stage_idx)
+        
+        self.params[weights] = weight_scale * np.random.randn(dim[0], dim[1])
+        self.params[bias] = np.zeros(dim[1])
+        #self.params[gamma] = np.ones(dim)
+        #self.params[beta] = np.zeros(dim)
+                
+    #print self.params.keys()
+    
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
@@ -294,7 +337,32 @@ class FullyConnectedNet(object):
     # self.bn_params[1] to the forward pass for the second batch normalization #
     # layer, etc.                                                              #
     ############################################################################
-    pass
+    
+    outputs = []
+    inputs = []
+    
+    for layer in xrange(self.num_layers):
+        stage = str(layer + 1)
+        W = self.params['W' + stage]
+        b = self.params['b' + stage]
+        #gamma = self.params['gamma' + stage]
+        #beta = self.params['beta' + stage]
+
+        # First stage is a special case, use X as input
+        if (layer == 0):
+            (output, input) = affine_relu_forward(X, W, b)
+        # Last stage is a special case - no RELU
+        elif (layer == self.num_layers - 1):
+            (output, input) = affine_forward(outputs[layer-1], W, b)
+        # Hidden layer-to-hidden layer case uses RELU
+        else:
+            (output, input) = affine_relu_forward(outputs[layer-1], W, b)
+            
+        outputs.append(output)
+        inputs.append(input)
+    
+    scores = outputs[-1]
+
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
@@ -317,7 +385,69 @@ class FullyConnectedNet(object):
     # automated tests, make sure that your L2 regularization includes a factor #
     # of 0.5 to simplify the expression for the gradient.                      #
     ############################################################################
-    pass
+    
+    # Compute the loss (combined data and regularization)
+    data_loss, grad_out = softmax_loss(scores, y)
+
+    reg_loss = 0
+    
+    layer_grad = grad_out
+
+    for layer in xrange(self.num_layers, 0, -1):
+        stage = str(layer)
+        w_key = 'W' + stage
+        b_key = 'b' + stage
+        W = self.params[w_key]    
+        b = self.params[b_key]
+        #gamma = self.params['gamma' + stage]
+        #beta = self.params['beta' + stage]
+      
+        reg_loss += 0.5 * self.reg * np.sum(W * W)
+        
+        # Output stage is just an affine transform, no RELU
+        if (layer == self.num_layers):     
+            (dx, dw, db) = affine_backward(layer_grad, inputs[layer-1])
+        # Rest of the network is an affine + RELU
+        else:
+            (dx, dw, db) = affine_relu_backward(layer_grad, inputs[layer-1])
+        
+        layer_grad = dx
+    
+        grads[w_key] = dw
+        grads[b_key] = db
+        
+        # Regularize the weights only (not bias)
+        grads[w_key] += self.reg * W
+        #grads[b_key] += self.reg * db
+
+
+    
+    loss = data_loss + reg_loss
+    
+
+
+## New fancy layer_utils.py combined functions
+#    (da1, dW2, db2) = affine_backward(dz2, cache2)
+#    (dx, dW1, db1) = affine_relu_backward(da1, cache1)
+#
+#    # Combine data and reg losses ready to return    
+#    reg_loss = 0.5 * self.reg * (np.sum(W1 * W1) + np.sum(W2 * W2))
+#    loss = reg_loss + data_loss
+#
+#    # Regularize the weights
+#    dW2 += self.reg * W2
+#    dW1 += self.reg * W1
+#    
+#    # Pack the grads values and return
+#    grads['W1'] = dW1
+#    grads['b1'] = db1
+#    grads['W2'] = dW2
+#    grads['b2'] = db2    
+#                
+#    #print 'data loss = {}'.format(data_loss)
+#    #print 'grads = {}'.format(grads)        
+    
+    
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
