@@ -88,37 +88,7 @@ class TwoLayerNet(object):
     W2 = self.params['W2']
     b2 = self.params['b2']
 
-# This is the old way of doing it piece by piece
-#    # Hidden layer affine relu from inputs    
-#    # Reshape x into N rows
-#    N = X.shape[0]
-#    X_reshape = X.reshape(N, -1)
-#    
-#    W1 = self.params['W1']
-#    b1 = self.params['b1']
-#    z1 = X_reshape.dot(W1) + b1
-#    
-#    a1, z1 = relu_forward(z1)
-#
-#    # Output layer affine softmax
-#    W2 = self.params['W2']
-#    b2 = self.params['b2']
-#    
-#    z2 = a1.dot(W2) + b2
-#    
-#    scores = z2
-
-# Neater combined implementation
-#    # First affine transformation
-#    (z1, affine1_cache) = affine_forward(X, W1, b1)
-#
-#    # RELU forward
-#    (a1, relu1_cache) = relu_forward(z1)
-#
-#    # Second affine transformation
-#    (z2, affine2_cache) = affine_forward(a1, W2, b2)
-
-# Ultra fancy layer_utils functions combining affine and relu
+    # Fancy layer_utils functions combining affine and relu
     (a1, cache1) = affine_relu_forward(X, W1, b1)
     (z2, cache2) = affine_forward(a1, W2, b2)
     scores = z2
@@ -146,17 +116,7 @@ class TwoLayerNet(object):
     # Compute the loss and output gradients in softmax
     data_loss, dz2 = softmax_loss(scores, y)
 
-# Old way of backpropping gradients (layers.py)                
-    ## Now backprop and update hidden layer W2 and b2
-    #da1, dW2, db2 = affine_backward(dz2, (a1, W2, b2))
-    #
-    ## Backprop through the Relu layer
-    #dz1 = relu_backward(da1, a1)
-    #
-    ## Backprop input layer and update W1 and b1
-    #(dx, dW1, db1) = affine_backward(dz1, (X, W1, b1))
-
-# New fancy layer_utils.py combined functions
+    # New fancy layer_utils.py combined functions
     (da1, dW2, db2) = affine_backward(dz2, cache2)
     (dx, dW1, db1) = affine_relu_backward(da1, cache1)
 
@@ -270,13 +230,16 @@ class FullyConnectedNet(object):
         stage_idx = idx + 1
         weights = 'W' + str(stage_idx)
         bias = 'b' + str(stage_idx)
-        #gamma = 'gamma' + str(stage_idx)
-        #beta = 'beta' + str(stage_idx)
+        if ((idx < self.num_layers-1) and self.use_batchnorm):
+            gamma = 'gamma' + str(stage_idx)
+            beta = 'beta' + str(stage_idx)
+            self.params[gamma] = np.ones(dim[1]) # Need gamma and beta for each col
+            self.params[beta] = np.zeros(dim[1])
+
         
         self.params[weights] = weight_scale * np.random.randn(dim[0], dim[1])
         self.params[bias] = np.zeros(dim[1])
-        #self.params[gamma] = np.ones(dim)
-        #self.params[beta] = np.zeros(dim)
+        
                 
     #print self.params.keys()
     
@@ -341,23 +304,38 @@ class FullyConnectedNet(object):
     outputs = []
     inputs = []
     
+    #print 'Forward pass'
+    
     for layer in xrange(self.num_layers):
         stage = str(layer + 1)
+        #print 'Stage is ' + stage
+
         W = self.params['W' + stage]
         b = self.params['b' + stage]
-        #gamma = self.params['gamma' + stage]
-        #beta = self.params['beta' + stage]
+        if (self.use_batchnorm) and (layer < self.num_layers-1):
+            gamma = self.params['gamma' + stage]
+            beta = self.params['beta' + stage]
+            bn_param = self.bn_params[layer]
 
+        
         # First stage is a special case, use X as input
         if (layer == 0):
-            (output, input) = affine_relu_forward(X, W, b)
-        # Last stage is a special case - no RELU
+            if (self.use_batchnorm):
+                output, input = affine_batchnorm_relu_forward(X, W, b, gamma, beta, bn_param)
+            else:
+                output, input = affine_relu_forward(X, W, b)
+
+        # Last stage is a special case - no RELU and no batchnorm
         elif (layer == self.num_layers - 1):
-            (output, input) = affine_forward(outputs[layer-1], W, b)
-        # Hidden layer-to-hidden layer case uses RELU
-        else:
-            (output, input) = affine_relu_forward(outputs[layer-1], W, b)
+            output, input = affine_forward(outputs[layer-1], W, b)
             
+        # Hidden layer-to-hidden layer case uses RELU (and batchnorm)
+        else:
+            if (self.use_batchnorm):
+                output, input = affine_batchnorm_relu_forward(outputs[layer-1], W, b, gamma, beta, bn_param)
+            else:
+                output, input = affine_relu_forward(outputs[layer-1], W, b)
+               
         outputs.append(output)
         inputs.append(input)
     
@@ -393,63 +371,61 @@ class FullyConnectedNet(object):
     
     layer_grad = grad_out
 
+    #print 'Backward pass'
+
     for layer in xrange(self.num_layers, 0, -1):
         stage = str(layer)
+        
         w_key = 'W' + stage
         b_key = 'b' + stage
+        
+        batchnorm_active = (self.use_batchnorm) and (layer < self.num_layers)
+        #print 'num_layers is {}, Stage is {}, layer is {}, batchnorm active is {}'.format(self.num_layers, stage, layer, batchnorm_active)
+
+                
         W = self.params[w_key]    
         b = self.params[b_key]
-        #gamma = self.params['gamma' + stage]
-        #beta = self.params['beta' + stage]
-      
+        if batchnorm_active:
+            gamma_key = 'gamma' + stage
+            beta_key = 'beta' + stage            
+            gamma = self.params[gamma_key]
+            beta = self.params[beta_key]
+
         reg_loss += 0.5 * self.reg * np.sum(W * W)
         
-        # Output stage is just an affine transform, no RELU
+        # Output stage is just an affine transform, no RELU or batchnorm
         if (layer == self.num_layers):     
-            (dx, dw, db) = affine_backward(layer_grad, inputs[layer-1])
-        # Rest of the network is an affine + RELU
+            dx, dw, db = affine_backward(layer_grad, inputs[layer-1])
+        # Rest of the network is an affine + (batchnorm) + RELU
         else:
-            (dx, dw, db) = affine_relu_backward(layer_grad, inputs[layer-1])
+            if batchnorm_active:
+                dx, dw, db, dgamma, dbeta = affine_batchnorm_relu_backward(layer_grad, inputs[layer-1])
+            else:
+                dx, dw, db = affine_relu_backward(layer_grad, inputs[layer-1])
+                
         
         layer_grad = dx
     
         grads[w_key] = dw
         grads[b_key] = db
         
+        if batchnorm_active:
+            grads[gamma_key] = dgamma
+            grads[beta_key] = dbeta
+
+        
+                        
         # Regularize the weights only (not bias)
         grads[w_key] += self.reg * W
         #grads[b_key] += self.reg * db
 
-
     
     loss = data_loss + reg_loss
-    
 
-
-## New fancy layer_utils.py combined functions
-#    (da1, dW2, db2) = affine_backward(dz2, cache2)
-#    (dx, dW1, db1) = affine_relu_backward(da1, cache1)
-#
-#    # Combine data and reg losses ready to return    
-#    reg_loss = 0.5 * self.reg * (np.sum(W1 * W1) + np.sum(W2 * W2))
-#    loss = reg_loss + data_loss
-#
-#    # Regularize the weights
-#    dW2 += self.reg * W2
-#    dW1 += self.reg * W1
-#    
-#    # Pack the grads values and return
-#    grads['W1'] = dW1
-#    grads['b1'] = db1
-#    grads['W2'] = dW2
-#    grads['b2'] = db2    
-#                
-#    #print 'data loss = {}'.format(data_loss)
-#    #print 'grads = {}'.format(grads)        
-    
-    
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
 
     return loss, grads
+
+

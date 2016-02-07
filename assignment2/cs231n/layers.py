@@ -62,7 +62,7 @@ def affine_backward(dout, cache):
   # Reshape x into N rows
   N = x.shape[0]
   x_reshape = x.reshape(N, -1)
-  
+
   # Do calculations, reshape x back into original shape
   dx = dout.dot(w.T)
   dx = dx.reshape(x.shape)
@@ -186,7 +186,22 @@ def batchnorm_forward(x, gamma, beta, bn_param):
     # the momentum variable to update the running mean and running variance,    #
     # storing your result in the running_mean and running_var variables.        #
     #############################################################################
-    pass
+    
+    # Compute the mean and var of each dimension in the mini-batch
+    sample_mean = np.mean(x, axis=0)
+    sample_var = np.var(x, axis=0)
+    
+    # Normalize, scale and shift the mini-batch
+    x_hat = (x - sample_mean) / np.sqrt(sample_var + eps)
+    out = (gamma * x_hat) + beta
+        
+    # Update running mean and variance, store in the cache
+    running_mean = momentum * running_mean + (1 - momentum) * sample_mean
+    running_var = momentum * running_var + (1 - momentum) * sample_var
+
+    # Store all the input values in the cache for backprop     
+    cache = (x, x_hat, gamma, beta, eps)
+    
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
@@ -197,7 +212,14 @@ def batchnorm_forward(x, gamma, beta, bn_param):
     # and shift the normalized data using gamma and beta. Store the result in   #
     # the out variable.                                                         #
     #############################################################################
-    pass
+    
+    running_mean = bn_param['running_mean']
+    running_var = bn_param['running_var']
+        
+    # Normalize, scale and shift the mini-batch
+    x_hat = (x - running_mean) / np.sqrt(running_var + eps)
+    out = (gamma * x_hat) + beta
+    
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
@@ -233,7 +255,28 @@ def batchnorm_backward(dout, cache):
   # TODO: Implement the backward pass for batch normalization. Store the      #
   # results in the dx, dgamma, and dbeta variables.                           #
   #############################################################################
-  pass
+  
+  # Unpack all the forward pass values
+  (x, x_hat, gamma, beta, eps) = cache
+  N, D = x.shape
+
+
+# Solution code from http://cthorey.github.io./backpropagation/
+#mu = 1./N*np.sum(h, axis = 0)
+#var = 1./N*np.sum((h-mu)**2, axis = 0)
+#dbeta = np.sum(dy, axis=0)
+#dgamma = np.sum((h - mu) * (var + eps)**(-1. / 2.) * dy, axis=0)
+#dh = (1. / N) * gamma * (var + eps)**(-1. / 2.) * (N * dy - np.sum(dy, axis=0)
+#    - (h - mu) * (var + eps)**(-1.0) * np.sum(dy * (h - mu), axis=0))
+
+  # Compute the mean and var of each dimension in the mini-batch
+  mean = np.mean(x, axis=0)
+  var = np.var(x, axis=0)
+
+  dbeta = np.sum(dout, axis=0)
+  dgamma = np.sum((x - mean) * (1.0 / np.sqrt(var + eps)) * dout, axis=0)
+  dx = (1.0 / N) * gamma * (1/np.sqrt(var + eps)) * (N * dout - np.sum(dout, axis = 0) - (x - mean) * (1.0/(var+eps)) * np.sum(dout * (x - mean), axis=0))
+  
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
@@ -263,7 +306,10 @@ def batchnorm_backward_alt(dout, cache):
   # should be able to compute gradients with respect to the inputs in a       #
   # single statement; our implementation fits on a single 80-character line.  #
   #############################################################################
-  pass
+  
+  # Just call the normal function instead
+  dx, dgamma, dbeta = batchnorm_backward(dout, cache)
+  
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
