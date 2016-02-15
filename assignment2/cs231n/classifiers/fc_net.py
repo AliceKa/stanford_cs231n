@@ -303,6 +303,7 @@ class FullyConnectedNet(object):
     
     outputs = []
     inputs = []
+    dropout_params = []
     
     #print 'Forward pass'
     
@@ -317,14 +318,17 @@ class FullyConnectedNet(object):
             beta = self.params['beta' + stage]
             bn_param = self.bn_params[layer]
 
-        
+
         # First stage is a special case, use X as input
         if (layer == 0):
             if (self.use_batchnorm):
                 output, input = affine_batchnorm_relu_forward(X, W, b, gamma, beta, bn_param)
             else:
                 output, input = affine_relu_forward(X, W, b)
-
+                if self.use_dropout:
+                    dropout_output, dropout_param = dropout_forward(output, self.dropout_param)
+                    output = dropout_output
+                                        
         # Last stage is a special case - no RELU and no batchnorm
         elif (layer == self.num_layers - 1):
             output, input = affine_forward(outputs[layer-1], W, b)
@@ -335,11 +339,17 @@ class FullyConnectedNet(object):
                 output, input = affine_batchnorm_relu_forward(outputs[layer-1], W, b, gamma, beta, bn_param)
             else:
                 output, input = affine_relu_forward(outputs[layer-1], W, b)
+                if self.use_dropout:
+                    dropout_output, dropout_param = dropout_forward(output, self.dropout_param)
+                    output = dropout_output
                
         outputs.append(output)
         inputs.append(input)
+        if self.use_dropout:
+            dropout_params.append(dropout_param)
     
     scores = outputs[-1]
+
 
     ############################################################################
     #                             END OF YOUR CODE                             #
@@ -380,8 +390,6 @@ class FullyConnectedNet(object):
         b_key = 'b' + stage
         
         batchnorm_active = (self.use_batchnorm) and (layer < self.num_layers)
-        #print 'num_layers is {}, Stage is {}, layer is {}, batchnorm active is {}'.format(self.num_layers, stage, layer, batchnorm_active)
-
                 
         W = self.params[w_key]    
         b = self.params[b_key]
@@ -401,6 +409,8 @@ class FullyConnectedNet(object):
             if batchnorm_active:
                 dx, dw, db, dgamma, dbeta = affine_batchnorm_relu_backward(layer_grad, inputs[layer-1])
             else:
+                if (self.use_dropout):
+                    layer_grad = dropout_backward(layer_grad, dropout_params[layer-1])
                 dx, dw, db = affine_relu_backward(layer_grad, inputs[layer-1])
                 
         
@@ -417,7 +427,6 @@ class FullyConnectedNet(object):
                         
         # Regularize the weights only (not bias)
         grads[w_key] += self.reg * W
-        #grads[b_key] += self.reg * db
 
     
     loss = data_loss + reg_loss
