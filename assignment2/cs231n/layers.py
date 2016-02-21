@@ -424,7 +424,50 @@ def conv_forward_naive(x, w, b, conv_param):
   # TODO: Implement the convolutional forward pass.                           #
   # Hint: you can use the function np.pad for padding.                        #
   #############################################################################
-  pass
+  
+  # Unpack the input parameters
+  N, C, H, W = x.shape
+  F, C, HH, WW = w.shape
+  stride = conv_param['stride']
+  pad = conv_param['pad']
+  
+  # Calculate output sizes
+  H_prime = 1 + (H + (2*pad) - HH) / stride
+  W_prime = 1 + (H + (2*pad) - HH) / stride
+  
+  print 'x: N = {}, C = {}, H = {}, W = {}'.format(*x.shape)
+  print ' w: F = {}, C = {}, HH = {}, WW = {}'.format(*w.shape)
+  
+  
+  y = np.zeros((N, F, H_prime, W_prime))
+  
+  for n in np.arange(N):
+    for f in np.arange(F):
+      for c in np.arange(C):
+          x_input = x[n, c]
+          x_input = np.pad(x_input, pad_width=pad, mode='constant', 
+                            constant_values=[0]*pad)
+          w_input = w[f, c]
+
+          print 'x input = {}'.format(x_input)
+          print 'w input = {}'.format(w_input)
+
+          x_range = np.arange(0, W, stride)
+          y_range = np.arange(0, H, stride)
+        
+          print x_range, y_range
+
+          for x in x_range
+            for y in y_range
+              print 'x = {}, y = {}'.format(x, y)
+          #    dot_result = x_input.dot(w_input.T)
+          #    print 'dot_result = {}'.format(dot_result)
+          #        
+                  
+                  
+          
+  
+  
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
