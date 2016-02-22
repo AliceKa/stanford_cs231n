@@ -434,39 +434,58 @@ def conv_forward_naive(x, w, b, conv_param):
   # Calculate output sizes
   H_prime = 1 + (H + (2*pad) - HH) / stride
   W_prime = 1 + (H + (2*pad) - HH) / stride
-  
+    
   print 'x: N = {}, C = {}, H = {}, W = {}'.format(*x.shape)
-  print ' w: F = {}, C = {}, HH = {}, WW = {}'.format(*w.shape)
+  print 'w: F = {}, C = {}, HH = {}, WW = {}'.format(*w.shape)
   
+# x input  
+#[[ 0.          0.          0.          0.          0.          0.        ]
+# [ 0.         -0.1        -0.09368421 -0.08736842 -0.08105263  0.        ]
+# [ 0.         -0.07473684 -0.06842105 -0.06210526 -0.05578947  0.        ]
+# [ 0.         -0.04947368 -0.04315789 -0.03684211 -0.03052632  0.        ]
+# [ 0.         -0.02421053 -0.01789474 -0.01157895 -0.00526316  0.        ]
+# [ 0.          0.          0.          0.          0.          0.        ]]
   
   y = np.zeros((N, F, H_prime, W_prime))
   
   for n in np.arange(N):
     for f in np.arange(F):
       for c in np.arange(C):
+          print 'Top of loop, n = {}, f = {}, c = {}'.format(n, f, c)
+          
           x_input = x[n, c]
           x_input = np.pad(x_input, pad_width=pad, mode='constant', 
                             constant_values=[0]*pad)
           w_input = w[f, c]
 
           print 'x input = {}'.format(x_input)
-          print 'w input = {}'.format(w_input)
+          #print 'w input = {}'.format(w_input)
 
-          x_range = np.arange(0, W, stride)
-          y_range = np.arange(0, H, stride)
+          x_range = np.arange(0, x_input.shape[0]-HH+1, stride)
+          y_range = np.arange(0, x_input.shape[1]-WW+1, stride)
         
-          print x_range, y_range
+          #print 'x_range = {}, y_range = {}'.format(x_range, y_range)
 
-          for x in x_range
-            for y in y_range
-              print 'x = {}, y = {}'.format(x, y)
-          #    dot_result = x_input.dot(w_input.T)
-          #    print 'dot_result = {}'.format(dot_result)
-          #        
-                  
-                  
+          for i in x_range:
+            for j in y_range:
+                
+              #print 'i = {}, j = {}'.format(i, j)
+              x_conv = x_input[i:i+HH, j:j+WW]
+                
+              
+              x_flat = x_conv.flatten()
+              w_flat = w_input.flatten()
+              dot_result = x_flat.dot(w_flat.T)
+                            
+              #print 'x_flat = {}'.format(x_flat)
+              #print 'w_flat = {}'.format(w_flat)
+              #                                                        
+              print 'dot_result = {}'.format(dot_result)
+              
+              #print 'Output element = {}, {}'.format(i/stride, j/stride)
+              y[n, f, i/stride, j/stride] = dot_result
           
-  
+  out = y
   
   #############################################################################
   #                             END OF YOUR CODE                              #
