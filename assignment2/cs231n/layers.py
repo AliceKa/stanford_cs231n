@@ -438,53 +438,45 @@ def conv_forward_naive(x, w, b, conv_param):
   print 'x: N = {}, C = {}, H = {}, W = {}'.format(*x.shape)
   print 'w: F = {}, C = {}, HH = {}, WW = {}'.format(*w.shape)
   
-# x input  
-#[[ 0.          0.          0.          0.          0.          0.        ]
-# [ 0.         -0.1        -0.09368421 -0.08736842 -0.08105263  0.        ]
-# [ 0.         -0.07473684 -0.06842105 -0.06210526 -0.05578947  0.        ]
-# [ 0.         -0.04947368 -0.04315789 -0.03684211 -0.03052632  0.        ]
-# [ 0.         -0.02421053 -0.01789474 -0.01157895 -0.00526316  0.        ]
-# [ 0.          0.          0.          0.          0.          0.        ]]
-  
+  # Pre-allocate the output
   y = np.zeros((N, F, H_prime, W_prime))
   
+  # Iterate through filters for each input example
   for n in np.arange(N):
     for f in np.arange(F):
+      print 'Top of loop, n = {}, f = {}'.format(n, f)
+    
+      # Get the current x and W for this 'N'
+      x_input = x[n]
+      w_input = w[f]
+      b_input = b[f]
+
+      # Pad x_input to produce x_pad
+      x_pad = np.zeros((C, H+(pad*2), W+(pad*2)))
       for c in np.arange(C):
-          print 'Top of loop, n = {}, f = {}, c = {}'.format(n, f, c)
-          
-          x_input = x[n, c]
-          x_input = np.pad(x_input, pad_width=pad, mode='constant', 
-                            constant_values=[0]*pad)
-          w_input = w[f, c]
+        x_pad[c] = np.pad(x_input[c], pad_width=pad, mode='constant', 
+                        constant_values=[0]*pad)
+      #print 'x_pad shape = {} \ndata = {}\n'.format(x_pad.shape, x_pad)
 
-          print 'x input = {}'.format(x_input)
-          #print 'w input = {}'.format(w_input)
 
-          x_range = np.arange(0, x_input.shape[0]-HH+1, stride)
-          y_range = np.arange(0, x_input.shape[1]-WW+1, stride)
+      x_range = np.arange(0, x_pad.shape[1]-HH+1, stride)
+      y_range = np.arange(0, x_pad.shape[2]-WW+1, stride)
+
+      #print 'x_range = {}, y_range = {}'.format(x_range, y_range)
+
+      for i in x_range:
+        for j in y_range:
         
-          #print 'x_range = {}, y_range = {}'.format(x_range, y_range)
-
-          for i in x_range:
-            for j in y_range:
-                
-              #print 'i = {}, j = {}'.format(i, j)
-              x_conv = x_input[i:i+HH, j:j+WW]
-                
-              
-              x_flat = x_conv.flatten()
-              w_flat = w_input.flatten()
-              dot_result = x_flat.dot(w_flat.T)
-                            
-              #print 'x_flat = {}'.format(x_flat)
-              #print 'w_flat = {}'.format(w_flat)
-              #                                                        
-              print 'dot_result = {}'.format(dot_result)
-              
-              #print 'Output element = {}, {}'.format(i/stride, j/stride)
-              y[n, f, i/stride, j/stride] = dot_result
-          
+          #print 'i = {}, j = {}'.format(i, j)
+          x_conv = x_pad[:,i:i+HH, j:j+WW]
+        
+          y_filter = np.sum(x_conv * w_input)
+          y_filter += b_input
+                    
+            
+          #print 'Output element = {}, {}'.format(i/stride, j/stride)
+          y[n, f, i/stride, j/stride] = y_filter
+        
   out = y
   
   #############################################################################
