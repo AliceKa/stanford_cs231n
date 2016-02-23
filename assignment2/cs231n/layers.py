@@ -435,8 +435,8 @@ def conv_forward_naive(x, w, b, conv_param):
   H_prime = 1 + (H + (2*pad) - HH) / stride
   W_prime = 1 + (H + (2*pad) - HH) / stride
     
-  print 'x: N = {}, C = {}, H = {}, W = {}'.format(*x.shape)
-  print 'w: F = {}, C = {}, HH = {}, WW = {}'.format(*w.shape)
+  #print 'x: N = {}, C = {}, H = {}, W = {}'.format(*x.shape)
+  #print 'w: F = {}, C = {}, HH = {}, WW = {}'.format(*w.shape)
   
   # Pre-allocate the output
   y = np.zeros((N, F, H_prime, W_prime))
@@ -444,7 +444,7 @@ def conv_forward_naive(x, w, b, conv_param):
   # Iterate through filters for each input example
   for n in np.arange(N):
     for f in np.arange(F):
-      print 'Top of loop, n = {}, f = {}'.format(n, f)
+      #print 'Top of loop, n = {}, f = {}'.format(n, f)
     
       # Get the current x and W for this 'N'
       x_input = x[n]
@@ -458,23 +458,15 @@ def conv_forward_naive(x, w, b, conv_param):
                         constant_values=[0]*pad)
       #print 'x_pad shape = {} \ndata = {}\n'.format(x_pad.shape, x_pad)
 
-
       x_range = np.arange(0, x_pad.shape[1]-HH+1, stride)
       y_range = np.arange(0, x_pad.shape[2]-WW+1, stride)
-
       #print 'x_range = {}, y_range = {}'.format(x_range, y_range)
 
       for i in x_range:
-        for j in y_range:
-        
-          #print 'i = {}, j = {}'.format(i, j)
-          x_conv = x_pad[:,i:i+HH, j:j+WW]
-        
+        for j in y_range:        
+          x_conv = x_pad[:,i:i+HH, j:j+WW]        
           y_filter = np.sum(x_conv * w_input)
           y_filter += b_input
-                    
-            
-          #print 'Output element = {}, {}'.format(i/stride, j/stride)
           y[n, f, i/stride, j/stride] = y_filter
         
   out = y
@@ -503,7 +495,79 @@ def conv_backward_naive(dout, cache):
   #############################################################################
   # TODO: Implement the convolutional backward pass.                          #
   #############################################################################
-  pass
+
+  # Unpack the cached input values from the forward pass
+  (x, w, b, conv_param) = cache  
+    
+  # Unpack the input parameters
+  N, C, H, W = x.shape
+  F, C, HH, WW = w.shape
+  stride = conv_param['stride']
+  pad = conv_param['pad']
+
+  dx = np.zeros_like(x)
+  dw = np.zeros_like(w)
+  db = np.zeros_like(b)
+  
+  for n in np.arange(N):
+    for f in np.arange(F):
+      print 'Top of loop, n = {}, f = {}'.format(n, f)
+    
+      # Get the current x and W for this 'N'
+      x_input = x[n]
+      #w_input = w[f]
+      #b_input = b[f]
+      
+      # Pad x_input and dx to increase sizes
+      x_pad = np.zeros((C, H+(pad*2), W+(pad*2)))
+      dx_pad = np.zeros((C, H+(pad*2), W+(pad*2)))
+      
+      for c in np.arange(C):
+        x_pad[c] = np.pad(x_input[c], pad_width=pad, mode='constant', 
+                       constant_values=[0]*pad)
+
+      x_range = np.arange(dout.shape[2])
+      y_range = np.arange(dout.shape[3])
+      #print 'x_range = {}, y_range = {}'.format(x_range, y_range)
+                  
+      # i and j are row and col number in original input dimension
+      # (not the convolution dimensions)  
+      for i in x_range:
+        for j in y_range: 
+          i1 = i * stride
+          i2 = (i * stride) + HH
+          j1 = j * stride
+          j2 = (j * stride) + WW
+                 
+          dx_pad[:, i1:i2, j1:j2] += w[f,:,:,:] * dout[n, f, i, j]    
+          dw[f,:,:,:] += x_pad[:,i1:i2, j1:j2] * dout[n, f, i, j]
+          db[f] += dout[n, f, i, j]
+
+    dx[n,:,:,:] = dx_pad[:,1:-1,1:-1]
+
+  print 'dx_pad.shape = {}'.format(dx_pad.shape)
+  print 'dx.shape = {}'.format(dx.shape)
+ 
+  
+  
+  #for n in xrange(N):
+  #  dx_pad = np.pad(dx[n,:,:,:], ((0,0),(pad,pad),(pad,pad)), 'constant')
+  #  x_pad = np.pad(x[n,:,:,:], ((0,0),(pad,pad),(pad,pad)), 'constant')
+  #  for f in xrange(F):
+  #    for h_prime in xrange(H_prime):
+  #      for w_prime in xrange(W_prime):
+  #        h1 = h_prime * stride
+  #        h2 = h_prime * stride + HH
+  #        w1 = w_prime * stride
+  #        w2 = w_prime * stride + WW
+  #        dx_pad[:, h1:h2, w1:w2] += w[f,:,:,:] * dout[n,f,h_prime,w_prime]
+  #        dw[f,:,:,:] += x_pad[:, h1:h2, w1:w2] * dout[n,f,h_prime,w_prime]
+  #        db[f] += dout[n,f,h_prime,w_prime]
+  #  dx[n,:,:,:] = dx_pad[:,1:-1,1:-1]
+
+    
+  print '\ndx = {}\ndw = {}\ndb = {}'.format(dx, dw, db)
+  
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
