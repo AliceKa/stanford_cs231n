@@ -510,26 +510,23 @@ def conv_backward_naive(dout, cache):
   db = np.zeros_like(b)
   
   for n in np.arange(N):
-    for f in np.arange(F):
-      print 'Top of loop, n = {}, f = {}'.format(n, f)
-    
-      # Get the current x and W for this 'N'
-      x_input = x[n]
-      #w_input = w[f]
-      #b_input = b[f]
       
-      # Pad x_input and dx to increase sizes
-      x_pad = np.zeros((C, H+(pad*2), W+(pad*2)))
-      dx_pad = np.zeros((C, H+(pad*2), W+(pad*2)))
-      
-      for c in np.arange(C):
-        x_pad[c] = np.pad(x_input[c], pad_width=pad, mode='constant', 
+    # Pad x_input and dx to increase sizes
+    x_pad = np.zeros((C, H+(pad*2), W+(pad*2)))
+    dx_pad = np.zeros((C, H+(pad*2), W+(pad*2)))
+   
+    #print x_pad.shape
+    for c in np.arange(C):
+        x_pad[c] = np.pad(x[n, c], pad_width=pad, mode='constant', 
                        constant_values=[0]*pad)
 
-      x_range = np.arange(dout.shape[2])
+    for f in np.arange(F):
+      #print 'Top of loop, n = {}, f = {}'.format(n, f)
+    
+      x_range = np.arange(dout.shape[2]) # height and width of convolved output
       y_range = np.arange(dout.shape[3])
       #print 'x_range = {}, y_range = {}'.format(x_range, y_range)
-                  
+                    
       # i and j are row and col number in original input dimension
       # (not the convolution dimensions)  
       for i in x_range:
@@ -538,35 +535,14 @@ def conv_backward_naive(dout, cache):
           i2 = (i * stride) + HH
           j1 = j * stride
           j2 = (j * stride) + WW
-                 
+                    
           dx_pad[:, i1:i2, j1:j2] += w[f,:,:,:] * dout[n, f, i, j]    
           dw[f,:,:,:] += x_pad[:,i1:i2, j1:j2] * dout[n, f, i, j]
           db[f] += dout[n, f, i, j]
 
     dx[n,:,:,:] = dx_pad[:,1:-1,1:-1]
 
-  print 'dx_pad.shape = {}'.format(dx_pad.shape)
-  print 'dx.shape = {}'.format(dx.shape)
- 
-  
-  
-  #for n in xrange(N):
-  #  dx_pad = np.pad(dx[n,:,:,:], ((0,0),(pad,pad),(pad,pad)), 'constant')
-  #  x_pad = np.pad(x[n,:,:,:], ((0,0),(pad,pad),(pad,pad)), 'constant')
-  #  for f in xrange(F):
-  #    for h_prime in xrange(H_prime):
-  #      for w_prime in xrange(W_prime):
-  #        h1 = h_prime * stride
-  #        h2 = h_prime * stride + HH
-  #        w1 = w_prime * stride
-  #        w2 = w_prime * stride + WW
-  #        dx_pad[:, h1:h2, w1:w2] += w[f,:,:,:] * dout[n,f,h_prime,w_prime]
-  #        dw[f,:,:,:] += x_pad[:, h1:h2, w1:w2] * dout[n,f,h_prime,w_prime]
-  #        db[f] += dout[n,f,h_prime,w_prime]
-  #  dx[n,:,:,:] = dx_pad[:,1:-1,1:-1]
-
-    
-  print '\ndx = {}\ndw = {}\ndb = {}'.format(dx, dw, db)
+  #print '\ndx = {}\ndw = {}\ndb = {}'.format(dx, dw, db)
   
   #############################################################################
   #                             END OF YOUR CODE                              #
@@ -593,13 +569,46 @@ def max_pool_forward_naive(x, pool_param):
   #############################################################################
   # TODO: Implement the max pooling forward pass                              #
   #############################################################################
-  pass
+
+  # Unpack the input sizes and key-values
+  N, C, H, W = x.shape
+  pool_height = pool_param['pool_height']
+  pool_width = pool_param['pool_width']
+  stride = pool_param['stride']
+  
+  WW = ((W - pool_width) / stride) + 1
+  HH = ((H - pool_height) / stride) + 1
+
+  out = np.zeros((N, C, HH, WW))
+  
+  for n in np.arange(N):
+      #print 'x[n] = {}'.format(x[n])
+      #print 'x[n].shape = {}'.format(x[n].shape)
+      
+      i_range = np.arange(WW)
+      j_range = np.arange(HH)
+
+      #print 'i_range = {}, j_range = {}'.format(i_range, j_range)
+
+      for c in np.arange(C):
+        for i in i_range:
+          for j in j_range:        
+            i1 = (i * stride)
+            i2 = (i * stride) + pool_height
+            j1 = (j * stride)
+            j2 = (j * stride) + pool_width 
+            #print 'indexes: [{}:{}], [{}:{}]'.format(i1, i2, j1, j2)
+            x_window = x[n, c, i1:i2, j1:j2]
+            #print 'checking x_window {}'.format(x_window)
+            out[n, c, i, j] = np.max(x_window)
+  
+  #print 'out = {}'.format(out)
+  
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
   cache = (x, pool_param)
   return out, cache
-
 
 def max_pool_backward_naive(dout, cache):
   """
@@ -616,7 +625,53 @@ def max_pool_backward_naive(dout, cache):
   #############################################################################
   # TODO: Implement the max pooling backward pass                             #
   #############################################################################
-  pass
+
+  
+  # My code is commented below  
+  x, pool_param = cache
+  
+  N, C, H, W = x.shape
+  pool_height = pool_param['pool_height']
+  pool_width = pool_param['pool_width']
+  stride = pool_param['stride']
+  
+  WW = ((W - pool_width) / stride) + 1
+  HH = ((H - pool_height) / stride) + 1
+  
+  dx = np.zeros_like(x)
+  
+  for n in np.arange(N):
+    #print 'x[n] = {}'.format(x[n])
+    #print 'x[n].shape = {}'.format(x[n].shape)
+    
+    i_range = np.arange(0, WW)
+    j_range = np.arange(0, HH)
+
+    #print 'i_range = {}, j_range = {}'.format(i_range, j_range)
+
+    # Iterate over convolved space
+    for c in np.arange(C):
+      for i in i_range:
+        for j in j_range:
+                  
+          i1 = i * pool_height
+          i2 = (i * pool_height) + pool_height
+          j1 = j * pool_width
+          j2 = (j * pool_width) + pool_width 
+          
+          x_pool = x[n, c, i1:i2, j1:j2]
+          max_idx = np.unravel_index(np.argmax(x_pool), x_pool.shape)
+          
+          #print 'Finding max in {}'.format(x_pool)
+          #print 'i = {}, j = {}, max_idx = {}'.format(i, j, max_idx)
+          
+          dx[n, c, i1 + max_idx[0], j1 + max_idx[1]] = dout[n, c, i, j]
+  
+  #print 'dout[0] = \n{}'.format(dout[0][0])
+  #print 'x[0] = \n{}'.format(x[0][0])
+  #print 'dx[0] = \n{}'.format(dx[0][0])
+
+  
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
