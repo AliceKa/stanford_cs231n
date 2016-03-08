@@ -47,7 +47,51 @@ class ThreeLayerConvNet(object):
     # hidden affine layer, and keys 'W3' and 'b3' for the weights and biases   #
     # of the output affine layer.                                              #
     ############################################################################
-    pass
+    
+    # Unpack the dimensions of the input data
+    C, H, W = input_dim
+
+    # Assumptions on the pad and stride values to find hidden affine input size
+    pad = 0
+    stride = 1
+    pool = 2
+    
+    conv_out_height = (H - filter_size) / (stride + 1)
+    conv_out_width = (W - filter_size) / (stride + 1) 
+    mp_out_height = conv_out_height / pool
+    mp_out_width = conv_out_width / pool
+    
+    conv_out_dims = (num_filters, conv_out_height, conv_out_width)
+    mp_out_dims = (num_filters, mp_out_height, mp_out_width)
+                                            
+    conv_W_dims = (num_filters, C, filter_size, filter_size)
+    hidden_W_dims = (num_filters, mp_out_height, mp_out_width, hidden_dim)
+    
+    print 'conv_W_dims = {}'.format(conv_W_dims)
+    print 'conv weight shape = {}'.format(conv_W_dims)
+    print 'conv out shape = {}'.format(conv_out_dims)
+    print 'maxpool out shape = {}'.format(mp_out_dims)
+    print 'hidden_dim = {}'.format(hidden_dim)
+    
+    print conv_W_dims
+    print (mp_out_dims, hidden_dim)
+    
+    self.params['W1'] = weight_scale * np.random.randn(*conv_W_dims)
+    self.params['b1'] = np.zeros(num_filters)
+    self.params['W2'] = weight_scale * np.random.randn(*hidden_W_dims)
+    self.params['b2'] = np.zeros(hidden_dim)
+    self.params['W3'] = weight_scale * np.random.randn(hidden_dim, num_classes)
+    self.params['b3'] = np.zeros(num_classes)
+    
+    
+    print 'W1 shape = {}'.format(self.params['W1'].shape)
+    print 'b1 shape = {}'.format(self.params['b1'].shape)
+    print 'W2 shape = {}'.format(self.params['W2'].shape)
+    print 'b2 shape = {}'.format(self.params['b2'].shape)
+    print 'W3 shape = {}'.format(self.params['W3'].shape)
+    print 'b3 shape = {}'.format(self.params['b3'].shape)
+    
+    
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
@@ -79,7 +123,20 @@ class ThreeLayerConvNet(object):
     # computing the class scores for X and storing them in the scores          #
     # variable.                                                                #
     ############################################################################
-    pass
+    
+    
+    crp_out, crp_cache = conv_relu_pool_forward(X, W1, b1, conv_param, pool_param)
+    print crp_out.shape
+    
+    ar_out, ar_cache = affine_relu_forward(crp_out, W2, b2)
+    print ar_out.shape
+    
+    a_out, a_cache = affine_forward(ar_out, W3, b3)
+    print a_out.shape
+    
+    scores = a_out
+    
+
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
