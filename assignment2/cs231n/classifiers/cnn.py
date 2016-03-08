@@ -69,24 +69,24 @@ class ThreeLayerConvNet(object):
     #print conv_W_dims
     #print (mp_out_dims, hidden_dim)
     
-    print mp_out_dims
-    
+    #print mp_out_dims
+    #
     self.params['W1'] = weight_scale * np.random.randn(*conv_W_dims)
     self.params['b1'] = np.zeros(num_filters)
     self.params['W2'] = weight_scale * np.random.randn(hidden_W_size, hidden_dim)
     self.params['b2'] = np.zeros(hidden_dim)
     self.params['W3'] = weight_scale * np.random.randn(hidden_dim, num_classes)
     self.params['b3'] = np.zeros(num_classes)
-    
-    
-    print 'W1 shape = {}'.format(self.params['W1'].shape)
-    print 'b1 shape = {}'.format(self.params['b1'].shape)
-    print 'W2 shape = {}'.format(self.params['W2'].shape)
-    print 'b2 shape = {}'.format(self.params['b2'].shape)
-    print 'W3 shape = {}'.format(self.params['W3'].shape)
-    print 'b3 shape = {}'.format(self.params['b3'].shape)
-    
-    print ' '
+    #
+    #
+    #print 'W1 shape = {}'.format(self.params['W1'].shape)
+    #print 'b1 shape = {}'.format(self.params['b1'].shape)
+    #print 'W2 shape = {}'.format(self.params['W2'].shape)
+    #print 'b2 shape = {}'.format(self.params['b2'].shape)
+    #print 'W3 shape = {}'.format(self.params['W3'].shape)
+    #print 'b3 shape = {}'.format(self.params['b3'].shape)
+    #
+    #print ' '
     #print 'W1 = {}'.format(self.params['W1'])
     #print 'b1 = {}'.format(self.params['b1'])
     #print 'W2 = {}'.format(self.params['W2'])
@@ -140,12 +140,6 @@ class ThreeLayerConvNet(object):
     
     # Calculate loss (both data and regularization loss)
     data_loss, dx = softmax_loss(scores, y)
-    reg_loss = 0
-    reg_loss += 0.5 * self.reg * np.sum(W1*W1) 
-    reg_loss += 0.5 * self.reg * np.sum(W2*W2) 
-    reg_loss += 0.5 * self.reg * np.sum(W3*W3) 
-    
-    loss = data_loss + reg_loss
     
     #print 'loss = {}'.format(loss)
     #print crp_out[0]
@@ -168,7 +162,7 @@ class ThreeLayerConvNet(object):
     ############################################################################
     
     
-    a_dx, a_dw, a_db = affine_backward(a_out, a_cache)
+    a_dx, a_dw, a_db = affine_backward(dx, a_cache)
     
     ar_dx, ar_dw, ar_db = affine_relu_backward(a_dx, ar_cache)
     
@@ -181,12 +175,20 @@ class ThreeLayerConvNet(object):
     grads['W3'] = a_dw
     grads['b3'] = a_db
     
-    # Add regularization for weights
+    ## Add regularization for weights
     grads['W1'] += self.reg * grads['W1']
     grads['W2'] += self.reg * grads['W2']
     grads['W3'] += self.reg * grads['W3']
 
-    print grads
+    reg_loss = 0
+    reg_loss += 0.5 * self.reg * np.sum(W1*W1) 
+    reg_loss += 0.5 * self.reg * np.sum(W2*W2) 
+    reg_loss += 0.5 * self.reg * np.sum(W3*W3) 
+    loss = data_loss + reg_loss
+    
+
+
+    #print grads
     
     ############################################################################
     #                             END OF YOUR CODE                             #
