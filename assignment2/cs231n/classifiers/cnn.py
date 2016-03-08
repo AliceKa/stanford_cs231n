@@ -51,34 +51,29 @@ class ThreeLayerConvNet(object):
     # Unpack the dimensions of the input data
     C, H, W = input_dim
 
-    # Assumptions on the pad and stride values to find hidden affine input size
-    pad = 0
-    stride = 1
-    pool = 2
-    
-    conv_out_height = (H - filter_size) / (stride + 1)
-    conv_out_width = (W - filter_size) / (stride + 1) 
-    mp_out_height = conv_out_height / pool
-    mp_out_width = conv_out_width / pool
-    
-    conv_out_dims = (num_filters, conv_out_height, conv_out_width)
-    mp_out_dims = (num_filters, mp_out_height, mp_out_width)
+    #mp_out_height = H / 2 # Max pool 2,2 means conv settings are changed
+    #mp_out_width = W / 2 # to make the height and width of the output halve !
+    #
+    #conv_out_dims = (num_filters, conv_out_height, conv_out_width)
+    mp_out_dims = (num_filters, H/2, W/2)
                                             
     conv_W_dims = (num_filters, C, filter_size, filter_size)
-    hidden_W_dims = (num_filters, mp_out_height, mp_out_width, hidden_dim)
+    hidden_W_size = num_filters * (H/2) * (W/2)
     
-    print 'conv_W_dims = {}'.format(conv_W_dims)
-    print 'conv weight shape = {}'.format(conv_W_dims)
-    print 'conv out shape = {}'.format(conv_out_dims)
-    print 'maxpool out shape = {}'.format(mp_out_dims)
-    print 'hidden_dim = {}'.format(hidden_dim)
+    #print 'conv_W_dims = {}'.format(conv_W_dims)
+    #print 'conv weight shape = {}'.format(conv_W_dims)
+    #print 'conv out shape = {}'.format(conv_out_dims)
+    #print 'maxpool out shape = {}'.format(mp_out_dims)
+    #print 'hidden_dim = {}'.format(hidden_dim)
     
-    print conv_W_dims
-    print (mp_out_dims, hidden_dim)
+    #print conv_W_dims
+    #print (mp_out_dims, hidden_dim)
+    
+    print mp_out_dims
     
     self.params['W1'] = weight_scale * np.random.randn(*conv_W_dims)
     self.params['b1'] = np.zeros(num_filters)
-    self.params['W2'] = weight_scale * np.random.randn(*hidden_W_dims)
+    self.params['W2'] = weight_scale * np.random.randn(hidden_W_size, hidden_dim)
     self.params['b2'] = np.zeros(hidden_dim)
     self.params['W3'] = weight_scale * np.random.randn(hidden_dim, num_classes)
     self.params['b3'] = np.zeros(num_classes)
@@ -91,7 +86,14 @@ class ThreeLayerConvNet(object):
     print 'W3 shape = {}'.format(self.params['W3'].shape)
     print 'b3 shape = {}'.format(self.params['b3'].shape)
     
-    
+    print ' '
+    #print 'W1 = {}'.format(self.params['W1'])
+    #print 'b1 = {}'.format(self.params['b1'])
+    #print 'W2 = {}'.format(self.params['W2'])
+    #print 'b2 = {}'.format(self.params['b2'])
+    #print 'W3 = {}'.format(self.params['W3'])
+    #print 'b3 = {}'.format(self.params['b3'])
+
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
@@ -126,16 +128,29 @@ class ThreeLayerConvNet(object):
     
     
     crp_out, crp_cache = conv_relu_pool_forward(X, W1, b1, conv_param, pool_param)
-    print crp_out.shape
+    #print 'crp_out.shape = {}'.format(crp_out.shape)
     
     ar_out, ar_cache = affine_relu_forward(crp_out, W2, b2)
-    print ar_out.shape
+    #print ar_out.shape
     
     a_out, a_cache = affine_forward(ar_out, W3, b3)
-    print a_out.shape
+    #print a_out.shape
     
     scores = a_out
     
+    # Calculate loss (both data and regularization loss)
+    data_loss, dx = softmax_loss(scores, y)
+    reg_loss = 0
+    reg_loss += 0.5 * self.reg * np.sum(W1*W1) 
+    reg_loss += 0.5 * self.reg * np.sum(W2*W2) 
+    reg_loss += 0.5 * self.reg * np.sum(W3*W3) 
+    
+    loss = data_loss + reg_loss
+    
+    #print 'loss = {}'.format(loss)
+    #print crp_out[0]
+    #print ar_out[0]
+    #print a_out[0]
 
     ############################################################################
     #                             END OF YOUR CODE                             #
@@ -144,14 +159,35 @@ class ThreeLayerConvNet(object):
     if y is None:
       return scores
     
-    loss, grads = 0, {}
+    grads = {} # Loss is already calculated above
     ############################################################################
     # TODO: Implement the backward pass for the three-layer convolutional net, #
     # storing the loss and gradients in the loss and grads variables. Compute  #
     # data loss using softmax, and make sure that grads[k] holds the gradients #
     # for self.params[k]. Don't forget to add L2 regularization!               #
     ############################################################################
-    pass
+    
+    
+    a_dx, a_dw, a_db = affine_backward(a_out, a_cache)
+    
+    ar_dx, ar_dw, ar_db = affine_relu_backward(a_dx, ar_cache)
+    
+    crp_dx, crp_dw, crp_db =  conv_relu_pool_backward(ar_dx, crp_cache)
+
+    grads['W1'] = crp_dw
+    grads['b1'] = crp_db
+    grads['W2'] = ar_dw
+    grads['b2'] = ar_db
+    grads['W3'] = a_dw
+    grads['b3'] = a_db
+    
+    # Add regularization for weights
+    grads['W1'] += self.reg * grads['W1']
+    grads['W2'] += self.reg * grads['W2']
+    grads['W3'] += self.reg * grads['W3']
+
+    print grads
+    
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
