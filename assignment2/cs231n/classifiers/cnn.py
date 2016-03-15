@@ -140,12 +140,6 @@ class ThreeLayerConvNet(object):
     
     # Calculate loss (both data and regularization loss)
     data_loss, dx = softmax_loss(scores, y)
-    reg_loss = 0
-    reg_loss += 0.5 * self.reg * np.sum(W1*W1) 
-    reg_loss += 0.5 * self.reg * np.sum(W2*W2) 
-    reg_loss += 0.5 * self.reg * np.sum(W3*W3) 
-    
-    loss = data_loss + reg_loss
     
     #print 'loss = {}'.format(loss)
     #print crp_out[0]
@@ -185,6 +179,14 @@ class ThreeLayerConvNet(object):
     grads['W1'] += self.reg * grads['W1']
     grads['W2'] += self.reg * grads['W2']
     grads['W3'] += self.reg * grads['W3']
+
+    reg_loss = 0
+    reg_loss += 0.5 * self.reg * np.sum(W1*W1) 
+    reg_loss += 0.5 * self.reg * np.sum(W2*W2) 
+    reg_loss += 0.5 * self.reg * np.sum(W3*W3) 
+    
+    loss = data_loss + reg_loss
+
 
     #print grads
     
